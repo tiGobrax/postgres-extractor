@@ -21,8 +21,8 @@ Servico FastAPI que extrai uma tabela do PostgreSQL, gera um Parquet com Polars 
 ## Como rodar
 Execute o docker-compose de desenvolvimento, que monta o codigo local como volume e habilita reload automatico:
 ```bash
-docker compose -f docker-compose.dev.yml down
-docker compose -f docker-compose.dev.yml up --build
+docker compose down
+docker compose up --build
 ```
 O FastAPI ficara acessivel em `http://localhost:8000`.
 
