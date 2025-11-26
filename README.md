@@ -1,6 +1,6 @@
 # Postgres Extractor
 
-Servico FastAPI que extrai uma tabela do PostgreSQL, grava em Parquet com Polars e permite salvar localmente ou enviar para o Google Cloud Storage (GCS).
+Servico FastAPI que extrai uma tabela do PostgreSQL, gera um Parquet com Polars e envia o resultado para o Google Cloud Storage (GCS).
 
 ## Requisitos
 - Docker e Docker Compose instalados.
@@ -12,7 +12,7 @@ Servico FastAPI que extrai uma tabela do PostgreSQL, grava em Parquet com Polars
    ```
    DB_HOST=localhost
    DB_PORT=5432
-   DB_NAME=seu_db
+   # DB_NAME=seu_db (opcional, pode ser enviado na request)
    DB_USER=seu_user
    DB_PASSWORD=seu_password
    ```
@@ -21,6 +21,7 @@ Servico FastAPI que extrai uma tabela do PostgreSQL, grava em Parquet com Polars
 ## Como rodar
 Execute o docker-compose de desenvolvimento, que monta o codigo local como volume e habilita reload automatico:
 ```bash
+docker compose -f docker-compose.dev.yml down
 docker compose -f docker-compose.dev.yml up --build
 ```
 O FastAPI ficara acessivel em `http://localhost:8000`.
@@ -33,46 +34,31 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 Garanta que as variaveis de ambiente do `.env` estejam exportadas.
 
-## Endpoints
-- `POST /extract` -> salva o Parquet em `./data`
-- `POST /extract/gcs` -> salva em `./data` e faz upload para `gs://gobrax-data-lake/data-lake/postgres`
+## Endpoint
+- `POST /run` -> gera um Parquet temporario e faz upload para `gs://gobrax-data-lake/data-lake/postgres`
 
 Body padrao:
 ```json
-{ "table": "schema.tabela_ou_apenas_tabela" }
+{ "db": "nome_do_banco", "table": "schema.tabela_ou_apenas_tabela" }
 ```
+Se `db` nao for informado, o valor definido em `DB_NAME` sera usado (caso exista).
 
-## Exemplos de uso
-### Salvar localmente
+## Exemplo de uso
 ```bash
-curl -X POST http://localhost:8000/extract \
+curl -X POST http://localhost:8000/run \
      -H "Content-Type: application/json" \
-     -d '{"table": "public.customers"}'
+     -d '{"db": "core_mgmt", "table": "public.customers"}'
 ```
 Resposta:
 ```json
 {
-  "path": "data/public_customers_1715623456.parquet",
-  "rows": 1234
-}
-```
-
-### Enviar para o GCS
-```bash
-curl -X POST http://localhost:8000/extract/gcs \
-     -H "Content-Type: application/json" \
-     -d '{"table": "public.customers"}'
-```
-Resposta:
-```json
-{
-  "path": "data/public_customers_1715623456.parquet",
+  "path": "/tmp/postgres-extractor/customers_1715623456.parquet",
   "rows": 1234,
-  "gcs_uri": "gs://gobrax-data-lake/data-lake/postgres/<db>/<schema>/<table>/public_customers_1715623456.parquet"
+  "gcs_uri": "gs://gobrax-data-lake/data-lake/postgres/core_mgmt/public/customers/customers_1715623456.parquet"
 }
 ```
 
-O arquivo continua salvo em `./data` e tambem fica disponivel no bucket `gobrax-data-lake` no caminho `data-lake/postgres/<db>/<schema>/<table>/`.
+O arquivo intermediario e gravado em `/tmp/postgres-extractor` dentro do container (nao vai para `./data` do host) e permanece disponivel no bucket `gobrax-data-lake` no caminho `data-lake/postgres/<db>/<schema>/<table>/` (o `<db>` e o valor enviado na request).
 
 ## Observacoes
 - O processo carrega a tabela inteira em memoria antes de escrever o Parquet. Para tabelas grandes, considere implementar paginacao ou streaming em batches.

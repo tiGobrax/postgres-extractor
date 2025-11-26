@@ -7,14 +7,14 @@ import asyncpg
 import polars as pl
 from google.cloud import storage
 
-from app.core.config import DEFAULT_STORAGE_PATH, Settings
+from app.core.config import Settings
 
 
 IDENT_RE = re.compile(r"^[a-zA-Z0-9_]+(\.[a-zA-Z0-9_]+)?$")
 
 
-async def extract_table_to_parquet(table_name: str, settings: Settings) -> dict:
-    """Extrai toda a tabela do Postgres e grava em um arquivo Parquet.
+async def extract_table_to_parquet(table_name: str, db_name: str, settings: Settings) -> dict:
+    """Extrai toda a tabela do Postgres (db_name) e grava em um arquivo Parquet.
 
     Retorna dict com caminho do arquivo e quantidade de linhas.
 
@@ -26,7 +26,7 @@ async def extract_table_to_parquet(table_name: str, settings: Settings) -> dict:
     conn = await asyncpg.connect(
         host=settings.DB_HOST,
         port=settings.DB_PORT,
-        database=settings.DB_NAME,
+        database=db_name,
         user=settings.DB_USER,
         password=settings.DB_PASSWORD,
     )
@@ -47,9 +47,9 @@ async def extract_table_to_parquet(table_name: str, settings: Settings) -> dict:
             df = pl.DataFrame(rows, infer_schema_length=None)
 
         ts = int(time.time())
-        safe_name = table_name.replace('.', '_')
-        out_dir = Path(DEFAULT_STORAGE_PATH)
-        out_path = out_dir / f"{safe_name}_{ts}.parquet"
+        _, safe_table_name = _parse_table_name(table_name)
+        out_dir = Path(settings.STORAGE_PATH)
+        out_path = out_dir / f"{safe_table_name}_{ts}.parquet"
         df.write_parquet(out_path)
 
         return {"path": str(out_path), "rows": len(df)}
@@ -66,37 +66,37 @@ def _parse_table_name(table_name: str) -> tuple[str, str]:
     return schema, tbl
 
 
-def _upload_file_to_gcs(local_path: Path, table_name: str, settings: Settings) -> str:
+def _upload_file_to_gcs(local_path: Path, table_name: str, db_name: str, settings: Settings) -> str:
     """Upload a Parquet file to GCS and return the gs:// URI."""
     credentials_path = Path(settings.GCP_CREDENTIALS_PATH)
     if not credentials_path.exists():
         raise FileNotFoundError(f"GCP credentials file not found: {credentials_path}")
 
-    if not settings.DB_NAME:
-        raise ValueError("DB_NAME must be set for GCS upload path construction")
+    if not db_name:
+        raise ValueError("database name must be provided for GCS path construction")
 
     schema, table = _parse_table_name(table_name)
     client = storage.Client.from_service_account_json(str(credentials_path))
     bucket = client.bucket(settings.GCP_BUCKET_NAME)
-    blob_path = f"{settings.GCP_BASE_PATH}/{settings.DB_NAME}/{schema}/{table}/{local_path.name}"
+    blob_path = f"{settings.GCP_BASE_PATH}/{db_name}/{schema}/{table}/{local_path.name}"
     blob = bucket.blob(blob_path)
     blob.upload_from_filename(str(local_path))
     return f"gs://{settings.GCP_BUCKET_NAME}/{blob_path}"
 
 
-async def extract_table_to_gcs(table_name: str, settings: Settings) -> dict:
+async def extract_table_to_gcs(table_name: str, db_name: str, settings: Settings) -> dict:
     """
-    Extrai a tabela para parquet local e envia o arquivo ao GCS.
+    Extrai a tabela para parquet local (db_name) e envia o arquivo ao GCS.
 
     Retorna dict com caminho local, URI gs:// e quantidade de linhas.
     """
-    result = await extract_table_to_parquet(table_name, settings)
+    result = await extract_table_to_parquet(table_name, db_name, settings)
     local_path = Path(result["path"])
     if not local_path.exists():
         raise FileNotFoundError(f"Parquet file not found: {local_path}")
 
     gcs_uri = await asyncio.get_running_loop().run_in_executor(
-        None, _upload_file_to_gcs, local_path, table_name, settings
+        None, _upload_file_to_gcs, local_path, table_name, db_name, settings
     )
     result["gcs_uri"] = gcs_uri
     return result

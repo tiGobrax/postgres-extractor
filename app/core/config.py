@@ -7,14 +7,13 @@ from pydantic_settings import BaseSettings
 
 
 ENV_FILE = Path(".env")
-DEFAULT_STORAGE_PATH = "./data"
+DEFAULT_STORAGE_PATH = "/tmp/postgres-extractor"
 DEFAULT_GCS_BUCKET = "gobrax-data-lake"
 DEFAULT_GCS_BASE_PATH = "data-lake/postgres"
 DEFAULT_GCS_CREDENTIALS_PATH = "postgres@gobrax-data.iam.gserviceaccount.com.json"
 REQUIRED_ENV_VARS: Sequence[str] = (
     "DB_HOST",
     "DB_PORT",
-    "DB_NAME",
     "DB_USER",
     "DB_PASSWORD",
 )
