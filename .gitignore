@@ -17,3 +17,6 @@ data/
 
 # Ajustes de IDE (mantem o .vscodeignore que ja existe)
 .vscode/
+
+# Google Cloud Credentials
+*.json
