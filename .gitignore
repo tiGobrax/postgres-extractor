@@ -9,7 +9,6 @@ env/
 
 # Configuracoes locais e credenciais
 .env
-.aws/
 
 # Dados gerados
 data/
