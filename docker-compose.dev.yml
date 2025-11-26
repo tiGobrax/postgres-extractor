@@ -1,0 +1,14 @@
+version: "3.9"
+
+services:
+  extractor:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    command: python -m app
+    ports:
+      - "8000:8000"

@@ -1,8 +1,19 @@
+# Artefatos Python
 __pycache__/
-.venv/
-env/
-venv/
 *.pyc
-data/
+
+# Ambientes virtuais
+.venv/
+venv/
+env/
+
+# Configuracoes locais e credenciais
 .env
 .aws/
+
+# Dados gerados
+data/
+*.parquet
+
+# Ajustes de IDE (mantem o .vscodeignore que ja existe)
+.vscode/

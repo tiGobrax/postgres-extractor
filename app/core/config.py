@@ -8,6 +8,9 @@ from pydantic_settings import BaseSettings
 
 ENV_FILE = Path(".env")
 DEFAULT_STORAGE_PATH = "./data"
+DEFAULT_GCS_BUCKET = "gobrax-data-lake"
+DEFAULT_GCS_BASE_PATH = "data-lake/postgres"
+DEFAULT_GCS_CREDENTIALS_PATH = "postgres@gobrax-data.iam.gserviceaccount.com.json"
 REQUIRED_ENV_VARS: Sequence[str] = (
     "DB_HOST",
     "DB_PORT",
@@ -24,6 +27,9 @@ class Settings(BaseSettings):
     DB_USER: str = ""
     DB_PASSWORD: str = ""
     STORAGE_PATH: str = DEFAULT_STORAGE_PATH
+    GCP_BUCKET_NAME: str = DEFAULT_GCS_BUCKET
+    GCP_BASE_PATH: str = DEFAULT_GCS_BASE_PATH
+    GCP_CREDENTIALS_PATH: str = DEFAULT_GCS_CREDENTIALS_PATH
 
     class Config:
         env_file = None  # load order handled manually
